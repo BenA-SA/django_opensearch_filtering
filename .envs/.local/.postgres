@@ -1,0 +1,7 @@
+# PostgreSQL
+# ------------------------------------------------------------------------------
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DB=opensearch_filtering
+POSTGRES_USER=CtwGCbvSKamRfUjLmUQqKXtlXSubXeMu
+POSTGRES_PASSWORD=bzzUirFNyFeIFGZLw8r2AQXdIKDOIsvTV2RE1qrUfuv3iLZeWZPuBMCfEPe1eufO
