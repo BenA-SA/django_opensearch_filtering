@@ -1,30 +1,12 @@
 import logging
 
 import pytest
-from django_opensearch_dsl.registries import registry
 
 from opensearch_filtering.opensearch.documents import BookDocument
 from opensearch_filtering.opensearch.models import Book
 from opensearch_filtering.opensearch.models import Page
 
 logger = logging.getLogger(__name__)
-
-
-@pytest.fixture(scope="session", autouse=True)
-def setup_opensearch(django_db_setup, django_db_blocker):
-    """
-    Ensures indexes exist and are populated.
-    """
-
-    with django_db_blocker.unblock():
-        # Delete existing indexes to avoid conflicts
-        for doc in registry.get_documents():
-            if doc._index.exists():  # noqa: SLF001
-                doc._index.delete()  # noqa: SLF001
-
-        # Create new indexes from documents
-        for doc in registry.get_documents():
-            doc.init()
 
 
 @pytest.mark.django_db
