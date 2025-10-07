@@ -83,11 +83,13 @@ THIRD_PARTY_APPS = [
     "rest_framework.authtoken",
     "corsheaders",
     "drf_spectacular",
+    "django_opensearch_dsl",
 ]
 
 LOCAL_APPS = [
     "opensearch_filtering.users",
     # Your stuff: custom apps go here
+    "opensearch_filtering.opensearch",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -322,7 +324,9 @@ ACCOUNT_FORMS = {"signup": "opensearch_filtering.users.forms.UserSignupForm"}
 # https://docs.allauth.org/en/latest/socialaccount/configuration.html
 SOCIALACCOUNT_ADAPTER = "opensearch_filtering.users.adapters.SocialAccountAdapter"
 # https://docs.allauth.org/en/latest/socialaccount/configuration.html
-SOCIALACCOUNT_FORMS = {"signup": "opensearch_filtering.users.forms.UserSocialSignupForm"}
+SOCIALACCOUNT_FORMS = {
+    "signup": "opensearch_filtering.users.forms.UserSocialSignupForm",
+}
 
 # django-rest-framework
 # -------------------------------------------------------------------------------
@@ -350,3 +354,16 @@ SPECTACULAR_SETTINGS = {
 }
 # Your stuff...
 # ------------------------------------------------------------------------------
+
+
+OPENSEARCH_DSL = {
+    "default": {
+        "hosts": env("OPENSEARCH_HOST", default="http://opensearch:9200"),
+        "http_auth": (
+            env("OPENSEARCH_USERNAME", default="username"),
+            env("OPENSEARCH_PASSWORD", default="password"),
+        ),
+        "verify_certs": False,
+        "queryset_pagination": env("OPENSEARCH_QUERYSET_PAGINATION", default=100),
+    },
+}

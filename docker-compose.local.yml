@@ -2,6 +2,7 @@ volumes:
   opensearch_filtering_local_postgres_data: {}
   opensearch_filtering_local_postgres_data_backups: {}
   opensearch_filtering_local_redis_data: {}
+  es_data: { }
 
 services:
   django: &django
@@ -14,6 +15,7 @@ services:
       - postgres
       - redis
       - mailpit
+      - opensearch
     volumes:
       - /app/.venv
       - .:/app:z
@@ -77,3 +79,23 @@ services:
     ports:
       - '5555:5555'
     command: /start-flower
+
+  opensearch:
+    image: opensearchproject/opensearch:2.19.3
+    container_name: opensearch_filtering_local_opensearch
+    environment:
+      - discovery.type=single-node
+      - plugins.security.disabled=true
+      - bootstrap.memory_lock=true
+      - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
+    env_file:
+      - ./.envs/.local/.opensearch
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    mem_limit: 2g
+    volumes:
+      - es_data:/usr/share/opensearch/data
+    ports:
+      - "9200:9200"
