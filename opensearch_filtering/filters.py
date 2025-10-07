@@ -10,6 +10,7 @@ from abc import abstractmethod
 from datetime import datetime
 from typing import Any
 
+from django import forms
 from django_opensearch_dsl import Document
 from django_opensearch_dsl.search import Search
 
@@ -17,14 +18,16 @@ from django_opensearch_dsl.search import Search
 class BaseFilter(ABC):
     """Base class for all filters."""
 
-    def __init__(self, field_name: str):
+    def __init__(self, field_name: str, label: str | None = None):
         """
         Initialize the filter.
 
         Args:
             field_name: The name of the field to filter on
+            label: The label to use for the form field (defaults to field_name)
         """
         self.field_name = field_name
+        self.label = label or field_name.replace("_", " ").title()
 
     @abstractmethod
     def filter(self, search: Search, value: Any) -> Search:
@@ -39,20 +42,48 @@ class BaseFilter(ABC):
             The filtered search object
         """
 
+    @abstractmethod
+    def get_form_field(self) -> forms.Field:
+        """
+        Get the form field for this filter.
+
+        Returns:
+            A Django form field
+        """
+
 
 class CharFilter(BaseFilter):
     """Filter for character fields."""
 
-    def __init__(self, field_name: str, lookup_expr: str = "match"):
+    def __init__(
+        self,
+        field_name: str,
+        lookup_expr: str = "match",
+        label: str | None = None,
+    ):
         """
         Initialize the filter.
 
         Args:
             field_name: The name of the field to filter on
             lookup_expr: The lookup expression to use (match, term, wildcard, etc.)
+            label: The label to use for the form field (defaults to field_name)
         """
-        super().__init__(field_name)
+        super().__init__(field_name, label)
         self.lookup_expr = lookup_expr
+
+    def get_form_field(self) -> forms.Field:
+        """
+        Get the form field for this filter.
+
+        Returns:
+            A Django form field
+        """
+        return forms.CharField(
+            label=self.label,
+            required=False,
+            widget=forms.TextInput(attrs={"class": "form-control"}),
+        )
 
     def filter(self, search: Search, value: str) -> Search:
         """
@@ -80,16 +111,35 @@ class CharFilter(BaseFilter):
 class NumericFilter(BaseFilter):
     """Filter for numeric fields."""
 
-    def __init__(self, field_name: str, lookup_expr: str = "term"):
+    def __init__(
+        self,
+        field_name: str,
+        lookup_expr: str = "term",
+        label: str | None = None,
+    ):
         """
         Initialize the filter.
 
         Args:
             field_name: The name of the field to filter on
             lookup_expr: The lookup expression to use (term, range, etc.)
+            label: The label to use for the form field (defaults to field_name)
         """
-        super().__init__(field_name)
+        super().__init__(field_name, label)
         self.lookup_expr = lookup_expr
+
+    def get_form_field(self) -> forms.Field:
+        """
+        Get the form field for this filter.
+
+        Returns:
+            A Django form field
+        """
+        return forms.FloatField(
+            label=self.label,
+            required=False,
+            widget=forms.NumberInput(attrs={"class": "form-control", "step": "any"}),
+        )
 
     def filter(self, search: Search, value: float) -> Search:  # noqa: PLR0911
         """
@@ -121,16 +171,35 @@ class NumericFilter(BaseFilter):
 class DateFilter(BaseFilter):
     """Filter for date fields."""
 
-    def __init__(self, field_name: str, lookup_expr: str = "term"):
+    def __init__(
+        self,
+        field_name: str,
+        lookup_expr: str = "term",
+        label: str | None = None,
+    ):
         """
         Initialize the filter.
 
         Args:
             field_name: The name of the field to filter on
             lookup_expr: The lookup expression to use (term, range, etc.)
+            label: The label to use for the form field (defaults to field_name)
         """
-        super().__init__(field_name)
+        super().__init__(field_name, label)
         self.lookup_expr = lookup_expr
+
+    def get_form_field(self) -> forms.Field:
+        """
+        Get the form field for this filter.
+
+        Returns:
+            A Django form field
+        """
+        return forms.DateField(
+            label=self.label,
+            required=False,
+            widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+        )
 
     def filter(self, search: Search, value: str | datetime) -> Search:  # noqa: PLR0911
         """
@@ -161,6 +230,29 @@ class DateFilter(BaseFilter):
 
 class BooleanFilter(BaseFilter):
     """Filter for boolean fields."""
+
+    def __init__(self, field_name: str, label: str | None = None):
+        """
+        Initialize the filter.
+
+        Args:
+            field_name: The name of the field to filter on
+            label: The label to use for the form field (defaults to field_name)
+        """
+        super().__init__(field_name, label)
+
+    def get_form_field(self) -> forms.Field:
+        """
+        Get the form field for this filter.
+
+        Returns:
+            A Django form field
+        """
+        return forms.BooleanField(
+            label=self.label,
+            required=False,
+            widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        )
 
     def filter(self, search: Search, value: bool) -> Search:  # noqa: FBT001
         """
@@ -248,3 +340,38 @@ class DocumentFilterSet(FilterSet):
         """
         search = self.document.search()
         return self.filter(search)
+
+    def get_form_class(self):
+        """
+        Get a form class for this filter set.
+
+        Returns:
+            A Django form class
+        """
+        form_fields = {}
+        for name, filter_obj in self.filters.items():
+            form_fields[name] = filter_obj.get_form_field()
+
+        return type(
+            f"{self.__class__.__name__}Form",
+            (forms.Form,),
+            form_fields,
+        )
+
+    def get_form(self, **kwargs):
+        """
+        Get a form instance for this filter set.
+
+        Args:
+            **kwargs: Additional arguments to pass to the form constructor
+
+        Returns:
+            A Django form instance
+        """
+        form_class = self.get_form_class()
+
+        if self.data:
+            # If we have data, initialize the form with it
+            return form_class(data=self.data, **kwargs)
+
+        return form_class(**kwargs)
