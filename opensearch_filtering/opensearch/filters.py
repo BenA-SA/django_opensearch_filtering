@@ -13,6 +13,8 @@ from typing import Any
 from django_opensearch_dsl import Document
 from django_opensearch_dsl.search import Search
 
+from opensearch_filtering.opensearch.documents import BookDocument
+
 
 class BaseFilter(ABC):
     """Base class for all filters."""
@@ -252,8 +254,6 @@ class DocumentFilterSet(FilterSet):
 
 class BookDocumentFilterSet(DocumentFilterSet):
     """Filter set for BookDocument."""
-
-    from opensearch_filtering.opensearch.documents import BookDocument  # noqa: PLC0415
 
     document = BookDocument
 
