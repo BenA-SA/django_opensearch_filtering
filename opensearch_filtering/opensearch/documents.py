@@ -12,7 +12,9 @@ class BookDocument(Document):
         properties={"number": fields.IntegerField(), "text": fields.TextField()},
     )
     title = fields.TextField(attr="title")
+    title_keyword = fields.KeywordField(attr="title")
     author = fields.TextField(attr="author")
+    author_keyword = fields.KeywordField(attr="author")
     publication_date = fields.DateField(attr="publication_date")
     price = fields.FloatField(attr="price")
 

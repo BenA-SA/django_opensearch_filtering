@@ -13,8 +13,13 @@ logger = logging.getLogger(__name__)
 class TestBookDocument:
     @pytest.fixture(autouse=True)
     def _setup_index(self, setup_opensearch):
-        # Runs before every test in this class
-        pass
+        """
+        Runs before every test in this class.
+        Clears the index to ensure test isolation.
+        """
+        # Clear the index before running tests in this class
+        BookDocument._index.delete()  # noqa: SLF001
+        BookDocument.init()
 
     def test_book_document(self):
         book = Book.objects.create(
