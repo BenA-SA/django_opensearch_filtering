@@ -1,4 +1,3 @@
-from django import forms
 from django_opensearch_dsl.search import Search
 
 from opensearch_filtering.filters import CharFilter
@@ -37,63 +36,12 @@ class BookDocumentFilterSet(DocumentFilterSet):
         ("-price", "Price (High to Low)"),
     ]
 
-    # Pagination defaults
-    DEFAULT_PAGE_SIZE = 10
-    MAX_PAGE_SIZE = 100
-
-    def get_form_class(self):
-        """
-        Get a form class for this filter set.
-
-        Overrides the parent method to add sorting and pagination fields.
-
-        Returns:
-            A Django form class
-        """
-        form_fields = {}
-
-        # Add filter fields
-        for name, filter_obj in self.filters.items():
-            form_fields[name] = filter_obj.get_form_field()
-
-        # Add sorting field
-        form_fields["sort"] = forms.ChoiceField(
-            choices=self.SORT_CHOICES,
-            required=False,
-            label="Sort by",
-            widget=forms.Select(attrs={"class": "form-select"}),
-        )
-
-        # Add pagination fields
-        form_fields["page"] = forms.IntegerField(
-            min_value=1,
-            required=False,
-            initial=1,
-            label="Page",
-            widget=forms.NumberInput(attrs={"class": "form-control"}),
-        )
-
-        form_fields["page_size"] = forms.IntegerField(
-            min_value=1,
-            max_value=self.MAX_PAGE_SIZE,
-            required=False,
-            initial=self.DEFAULT_PAGE_SIZE,
-            label="Items per page",
-            widget=forms.NumberInput(attrs={"class": "form-control"}),
-        )
-
-        return type(
-            f"{self.__class__.__name__}Form",
-            (forms.Form,),
-            form_fields,
-        )
-
     def filter(self, search: Search) -> Search:
         """
         Apply all filters to the search.
 
         This overrides the parent method to handle special cases
-        like price_min and price_max, and to apply sorting.
+        like price_min and price_max before applying standard filters.
 
         Args:
             search: The search object to filter
@@ -124,54 +72,18 @@ class BookDocumentFilterSet(DocumentFilterSet):
                 if range_params:
                     filtered_search = filtered_search.query("range", price=range_params)
 
-        # Apply all other filters
-        for name, filter_obj in self.filters.items():
-            # Skip price_min and price_max as they're handled separately
-            if name in ("price_min", "price_max"):
-                continue
+        # Apply standard filters and sorting via parent class method
+        # Skip price_min and price_max as they're handled separately
+        original_data = self.data.copy()
+        if "price_min" in self.data:
+            del self.data["price_min"]
+        if "price_max" in self.data:
+            del self.data["price_max"]
 
-            # Only apply if the filter has a value
-            if name in self.data and self.data[name] not in (None, ""):
-                filtered_search = filter_obj.filter(filtered_search, self.data[name])
+        # Call parent filter method to apply standard filters and sorting
+        filtered_search = super().filter(filtered_search)
 
-        # Apply sorting if specified
-        if self.data.get("sort"):
-            sort_field = self.data["sort"]
-            filtered_search = filtered_search.sort(sort_field)
+        # Restore original data
+        self.data = original_data
 
         return filtered_search
-
-    def search(self) -> Search:
-        """
-        Get a filtered and paginated search for the document.
-
-        Overrides the parent method to apply pagination.
-
-        Returns:
-            A filtered and paginated search object
-        """
-        # Get the base search object
-        search = self.document.search()
-
-        # Apply filters and sorting
-        search = self.filter(search)
-
-        # Apply pagination if specified
-        page = self.data.get("page", 1)
-        if not page or page < 1:
-            page = 1
-
-        page_size = self.data.get("page_size", self.DEFAULT_PAGE_SIZE)
-        if not page_size or page_size < 1:
-            page_size = self.DEFAULT_PAGE_SIZE
-        elif page_size > self.MAX_PAGE_SIZE:
-            page_size = self.MAX_PAGE_SIZE
-
-        # Calculate start and end indices for pagination
-        start = (page - 1) * page_size
-        end = start + page_size
-
-        # Apply pagination
-        search = search[start:end]
-
-        return search  # noqa: RET504

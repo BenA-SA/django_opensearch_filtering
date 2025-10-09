@@ -309,8 +309,14 @@ class FilterSet:
             The filtered search object
         """
         for name, filter_obj in self.filters.items():
-            if name in self.data:
+            if name in self.data and self.data[name] not in (None, ""):
                 search = filter_obj.filter(search, self.data[name])
+
+        # Apply sorting if specified
+        if self.data.get("sort"):
+            sort_field = self.data["sort"]
+            search = search.sort(sort_field)
+
         return search
 
 
@@ -318,6 +324,15 @@ class DocumentFilterSet(FilterSet):
     """Base class for document filter sets."""
 
     document: type[Document] = None
+
+    # Default sort choices - should be overridden by subclasses
+    SORT_CHOICES = [
+        ("", "Default"),
+    ]
+
+    # Pagination defaults
+    DEFAULT_PAGE_SIZE = 10
+    MAX_PAGE_SIZE = 100
 
     def __init__(self, data: dict[str, Any] | None = None):
         """
@@ -333,13 +348,36 @@ class DocumentFilterSet(FilterSet):
 
     def search(self) -> Search:
         """
-        Get a filtered search for the document.
+        Get a filtered and paginated search for the document.
 
         Returns:
-            A filtered search object
+            A filtered and paginated search object
         """
+        # Get the base search object
         search = self.document.search()
-        return self.filter(search)
+
+        # Apply filters and sorting
+        search = self.filter(search)
+
+        # Apply pagination if specified
+        page = self.data.get("page", 1)
+        if not page or page < 1:
+            page = 1
+
+        page_size = self.data.get("page_size", self.DEFAULT_PAGE_SIZE)
+        if not page_size or page_size < 1:
+            page_size = self.DEFAULT_PAGE_SIZE
+        elif page_size > self.MAX_PAGE_SIZE:
+            page_size = self.MAX_PAGE_SIZE
+
+        # Calculate start and end indices for pagination
+        start = (page - 1) * page_size
+        end = start + page_size
+
+        # Apply pagination
+        search = search[start:end]
+
+        return search  # noqa: RET504
 
     def get_form_class(self):
         """
@@ -349,8 +387,36 @@ class DocumentFilterSet(FilterSet):
             A Django form class
         """
         form_fields = {}
+
+        # Add filter fields
         for name, filter_obj in self.filters.items():
             form_fields[name] = filter_obj.get_form_field()
+
+        # Add sorting field
+        form_fields["sort"] = forms.ChoiceField(
+            choices=self.SORT_CHOICES,
+            required=False,
+            label="Sort by",
+            widget=forms.Select(attrs={"class": "form-select"}),
+        )
+
+        # Add pagination fields
+        form_fields["page"] = forms.IntegerField(
+            min_value=1,
+            required=False,
+            initial=1,
+            label="Page",
+            widget=forms.NumberInput(attrs={"class": "form-control"}),
+        )
+
+        form_fields["page_size"] = forms.IntegerField(
+            min_value=1,
+            max_value=self.MAX_PAGE_SIZE,
+            required=False,
+            initial=self.DEFAULT_PAGE_SIZE,
+            label="Items per page",
+            widget=forms.NumberInput(attrs={"class": "form-control"}),
+        )
 
         return type(
             f"{self.__class__.__name__}Form",
