@@ -86,9 +86,9 @@ class TestBookDocumentFilterSetForm:
             "title",
             "author",
             "publication_date",
-            "price",
-            "price_min",
-            "price_max",
+            "price_exact",
+            "price_min_value",
+            "price_max_value",
         ]
         for field_name in expected_fields:
             assert field_name in form.fields
@@ -97,17 +97,17 @@ class TestBookDocumentFilterSetForm:
         assert isinstance(form.fields["title"], forms.CharField)
         assert isinstance(form.fields["author"], forms.CharField)
         assert isinstance(form.fields["publication_date"], forms.DateField)
-        assert isinstance(form.fields["price"], forms.FloatField)
-        assert isinstance(form.fields["price_min"], forms.FloatField)
-        assert isinstance(form.fields["price_max"], forms.FloatField)
+        assert isinstance(form.fields["price_exact"], forms.FloatField)
+        assert isinstance(form.fields["price_min_value"], forms.FloatField)
+        assert isinstance(form.fields["price_max_value"], forms.FloatField)
 
     def test_form_with_data(self):
         """Test that a form can be initialized with data."""
         # Create data
         data = {
             "title": "Python",
-            "price_min": "20.0",
-            "price_max": "50.0",
+            "price_min_value": "20.0",
+            "price_max_value": "50.0",
         }
 
         # Create a filterset with data
@@ -121,8 +121,8 @@ class TestBookDocumentFilterSetForm:
 
         # Check that the form has the expected data
         assert form.data["title"] == "Python"
-        assert form.data["price_min"] == "20.0"
-        assert form.data["price_max"] == "50.0"
+        assert form.data["price_min_value"] == "20.0"
+        assert form.data["price_max_value"] == "50.0"
 
     def test_form_filtering_title(self):
         """Test that the form correctly filters by title."""
@@ -165,7 +165,7 @@ class TestBookDocumentFilterSetForm:
     def test_form_filtering_exact_price(self):
         """Test that the form correctly filters by exact price."""
         form_class = BookDocumentFilterSet().get_form_class()
-        form = form_class(data={"price": "29.99"})
+        form = form_class(data={"price_exact": "29.99"})
         assert form.is_valid()
 
         # Use the form's cleaned_data to create a filter_set and execute search
@@ -180,7 +180,7 @@ class TestBookDocumentFilterSetForm:
     def test_form_filtering_price_range(self):
         """Test that the form correctly filters by price range."""
         form_class = BookDocumentFilterSet().get_form_class()
-        form = form_class(data={"price_min": "35.0", "price_max": "45.0"})
+        form = form_class(data={"price_min_value": "35.0", "price_max_value": "45.0"})
         assert form.is_valid()
 
         # Use the form's cleaned_data to create a filter_set and execute search

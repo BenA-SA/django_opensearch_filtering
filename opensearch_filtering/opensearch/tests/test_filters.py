@@ -102,7 +102,7 @@ class TestBookDocumentFilterSet:
 
     def test_price_filter(self):
         # Test exact price filter
-        filter_set = BookDocumentFilterSet(data={"price": 29.99})
+        filter_set = BookDocumentFilterSet(data={"price_exact": 29.99})
         results = filter_set.search().execute()
 
         # Should match book1 but not book2, book3, or book4
@@ -111,7 +111,9 @@ class TestBookDocumentFilterSet:
 
     def test_price_range_filter(self):
         # Test price range filter
-        filter_set = BookDocumentFilterSet(data={"price_min": 35.0, "price_max": 45.0})
+        filter_set = BookDocumentFilterSet(
+            data={"price_min_value": 35.0, "price_max_value": 45.0},
+        )
         results = filter_set.search().execute()
 
         # Should match book2 but not book1, book3, or book4
